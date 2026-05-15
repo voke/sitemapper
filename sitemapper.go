@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
 
 	"github.com/gocolly/colly"
@@ -25,6 +26,87 @@ type sitemapIndex struct {
 	Sitemaps []struct {
 		Loc string `xml:"loc"`
 	} `xml:"sitemap"`
+}
+
+// SitemapNode represents a sitemap entry in the tree structure.
+type SitemapNode struct {
+	Sitemap   string        `json:"sitemap"`
+	URLs      int           `json:"urls"`
+	TotalURLs int           `json:"total_urls"`
+	Children  []SitemapNode `json:"children,omitempty"`
+}
+
+func fetchSitemapBytes(url string) ([]byte, error) {
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("User-Agent", UserAgent)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	return io.ReadAll(resp.Body)
+}
+
+func decompressIfGzipped(url string, data []byte) ([]byte, error) {
+	if strings.HasSuffix(strings.ToLower(url), ".gz") {
+		gr, err := gzip.NewReader(bytes.NewReader(data))
+		if err != nil {
+			return nil, err
+		}
+		defer gr.Close()
+		return io.ReadAll(gr)
+	}
+	return data, nil
+}
+
+func buildSitemapNode(sitemapURL string) (SitemapNode, error) {
+	node := SitemapNode{Sitemap: sitemapURL}
+
+	raw, err := fetchSitemapBytes(sitemapURL)
+	if err != nil {
+		return node, fmt.Errorf("fetching %s: %w", sitemapURL, err)
+	}
+
+	xmlData, err := decompressIfGzipped(sitemapURL, raw)
+	if err != nil {
+		return node, fmt.Errorf("decompressing %s: %w", sitemapURL, err)
+	}
+
+	var si sitemapIndex
+	if xml.Unmarshal(xmlData, &si) == nil && len(si.Sitemaps) > 0 {
+		for _, s := range si.Sitemaps {
+			child, err := buildSitemapNode(strings.TrimSpace(s.Loc))
+			if err != nil {
+				return node, err
+			}
+			node.TotalURLs += child.TotalURLs
+			node.Children = append(node.Children, child)
+		}
+		return node, nil
+	}
+
+	var us sitemapURLSet
+	if xml.Unmarshal(xmlData, &us) == nil {
+		node.URLs = len(us.URLs)
+		node.TotalURLs = node.URLs
+	}
+
+	return node, nil
+}
+
+// GetSitemapTree fetches and builds a tree structure of the sitemap,
+// counting URLs at each level without invoking a callback per URL.
+func GetSitemapTree(sitemapURL string) ([]SitemapNode, error) {
+	node, err := buildSitemapNode(sitemapURL)
+	if err != nil {
+		return nil, err
+	}
+	return []SitemapNode{node}, nil
 }
 
 func parseGzippedSitemap(data []byte, c *colly.Collector, handler CallbackHandler) {
