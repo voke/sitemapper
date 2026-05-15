@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gocolly/colly"
+	"github.com/gocolly/colly/v2"
 )
 
 const UserAgent = "Mozilla/5.0 (compatible; SiteMapper/1.0)"
