@@ -3,6 +3,9 @@
 
 A sitemap crawler/parser written in Go with support for `sitemapindex` and `urlset`.
 
+> [!NOTE]
+> This tool is built for hobby projects and debugging purposes. The API may change or be removed at any time without notice. Do not use it in production.
+
 ## Installation
 
 ```bash
