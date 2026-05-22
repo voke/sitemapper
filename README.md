@@ -1,13 +1,68 @@
 
 # 🔗📙 Sitemapper
 
-A sitemap crawler/parser written in go with support for `sitemapindex` and `urlset`.
+A sitemap crawler/parser written in Go with support for `sitemapindex` and `urlset`.
+
+## Installation
+
+```bash
+go get github.com/voke/sitemapper
+```
 
 ## Examples
 
+### Crawl and process all URLs
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+
+	sitemapper "github.com/voke/sitemapper"
+)
+
+func main() {
+	handler := func(url string) {
+		fmt.Println(url)
+	}
+
+	stats, err := sitemapper.CrawlSitemap("https://www.example.com/sitemap.xml", handler)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Printf("URLs processed: %d\n", stats.URLsProcessed)
+}
+```
+
+### Crawl with whitelist filters
+
+Only follow sitemaps matching `*-product.xml` and only process URLs containing `/products/`.
+
+```go
+stats, err := sitemapper.CrawlSitemap(
+    "https://www.example.com/sitemap.xml",
+    handler,
+    sitemapper.Options{
+        SitemapWhitelist: "*-product.xml",
+        URLWhitelist:     "*/products/*",
+    },
+)
+if err != nil {
+    log.Fatal(err)
+}
+
+fmt.Printf("Processed:         %d\n", stats.URLsProcessed)
+fmt.Printf("URLs ignored:      %d\n", stats.URLsIgnored)
+fmt.Printf("Sitemaps followed: %d\n", stats.SitemapsProcessed)
+fmt.Printf("Sitemaps ignored:  %d\n", stats.SitemapsIgnored)
+```
+
 ### Get sitemap tree
 
-Fetches the sitemap hierarchy and counts URLs at each level — without processing individual URLs.
+Fetches the sitemap hierarchy and counts URLs at each level.
 
 ```go
 package main
@@ -59,29 +114,44 @@ Example output:
 ]
 ```
 
-### Crawl and process URLs
+---
 
-Traverses the full sitemap and invokes a callback for every URL found.
+## CLI
 
-```go
-package main
+A command-line tool is included under `cmd/sitemapper`.
 
-import (
-	"fmt"
+```bash
+go install github.com/voke/sitemapper/cmd/sitemapper@latest
+```
 
-	sitemapper "github.com/voke/sitemapper"
-)
+```
+Usage: sitemapper [flags] <sitemap-url>
+```
 
-func main() {
-	total := 0
+| Flag | Type | Description |
+|---|---|---|
+| `-tree` | bool | Print sitemap hierarchy as JSON instead of crawling URLs |
+| `-sitemap-whitelist` | string | Glob pattern to filter nested sitemaps (e.g. `*-product.xml`) |
+| `-url-whitelist` | string | Glob pattern to filter URLs passed to output (e.g. `*/products/*`) |
+| `-quiet` | bool | Suppress URL output; only print stats |
+| `-json-stats` | bool | Print stats as JSON instead of plain text |
 
-	handler := func(url string) {
-		total++
-		fmt.Printf("Process URL: %s\n", url)
-	}
+**Examples:**
 
-	sitemapper.CrawlSitemap("www.example.com", "https://www.example.com/sitemap.xml", handler)
+```bash
+# Print sitemap hierarchy as JSON
+sitemapper -tree https://www.example.com/sitemap.xml
 
-	fmt.Println("Total URLs:", total)
-}
+# Crawl all URLs
+sitemapper https://www.example.com/sitemap.xml
+
+# Only product sitemaps and product URLs, stats as JSON
+sitemapper \
+  -sitemap-whitelist "*-product.xml" \
+  -url-whitelist "*/products/*" \
+  -json-stats \
+  https://www.example.com/sitemap.xml
+
+# Quiet mode — just the stats
+sitemapper -quiet https://www.example.com/sitemap.xml
 ```
