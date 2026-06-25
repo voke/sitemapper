@@ -42,14 +42,14 @@ type compiledOptions struct {
 func compileOptions(opts Options) (compiledOptions, error) {
 	var co compiledOptions
 	if opts.SitemapWhitelist != "" {
-		g, err := glob.Compile(opts.SitemapWhitelist)
+		g, err := glob.Compile(opts.SitemapWhitelist, '/')
 		if err != nil {
 			return co, fmt.Errorf("invalid SitemapWhitelist pattern: %w", err)
 		}
 		co.sitemapWhitelist = g
 	}
 	if opts.URLWhitelist != "" {
-		g, err := glob.Compile(opts.URLWhitelist)
+		g, err := glob.Compile(opts.URLWhitelist, '/')
 		if err != nil {
 			return co, fmt.Errorf("invalid URLWhitelist pattern: %w", err)
 		}

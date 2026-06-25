@@ -158,3 +158,16 @@ sitemapper \
 # Quiet mode — just the stats
 sitemapper -quiet https://www.example.com/sitemap.xml
 ```
+
+## URL glob patterns
+
+
+URL patterns use glob matching with `/` as the path separator.
+
+Supported syntax:
+
+- `*` matches anything except `/`
+- `**` matches anything, including `/`
+- `[0-9]` matches one digit
+- `[a-z]` matches one lowercase letter
+- `[A-Z]` matches one uppercase letter
